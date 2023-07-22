@@ -1,3 +1,5 @@
+github.com/inhies/go-bytesize v0.0.0-20220417184213-4913239db9cf h1:FtEj8sfIcaaBfAKrE1Cwb61YDtYq9JxChK1c7AKce7s=
+github.com/inhies/go-bytesize v0.0.0-20220417184213-4913239db9cf/go.mod h1:yrqSXGoD/4EKfF26AOGzscPOgTTJcyAwM2rpixWT+t4=
 github.com/net-byte/go-gateway v0.0.2 h1:xNB7CqWh7js6PB/xOochjyJlDHl6sZthhPSoJdxwoLY=
 github.com/net-byte/go-gateway v0.0.2/go.mod h1:+NvPbRjN64RUYvm6xtRBUswoAXKAe44Y/PfWtWMgwwY=
 github.com/net-byte/water v0.0.9 h1:4kgflU1N3dHA+OloRVsS0UUz++zQJ/+cthC1ZmHSPOE=
