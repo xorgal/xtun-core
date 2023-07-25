@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/net-byte/go-gateway"
-	"github.com/xorgal/xtun-core/internal"
 )
 
 // Returns the name of interface
@@ -58,28 +57,29 @@ func isPhysicalInterface(addr string) bool {
 }
 
 // Lookup IP address of the given hostname
-func LookupIP(domain string) net.IP {
+func LookupIP(domain string) (net.IP, error) {
 	ips, err := net.LookupIP(domain)
 	if err != nil || len(ips) == 0 {
-		log.Println(err)
-		return nil
+		return nil, err
 	}
-	return ips[0]
+	return ips[0], nil
 }
 
 // LookupServerAddrIP returns the IP of server address
-func LookupServerAddrIP(serverAddr string) net.IP {
+func LookupServerAddrIP(serverAddr string) (net.IP, error) {
 	host, _, err := net.SplitHostPort(serverAddr)
 	if err != nil {
-		internal.Fatal("error server address")
-		return nil
+		return nil, err
 	}
-	ip := LookupIP(host)
-	return ip
+	ip, err := LookupIP(host)
+	if err != nil {
+		return nil, err
+	}
+	return ip, nil
 }
 
 // DiscoverGateway returns the local gateway IP address
-func DiscoverGateway(ipv4 bool) string {
+func DiscoverGateway(ipv4 bool) (net.IP, error) {
 	var ip net.IP
 	var err error
 	if ipv4 {
@@ -88,10 +88,9 @@ func DiscoverGateway(ipv4 bool) string {
 		ip, err = gateway.DiscoverGatewayIPv6()
 	}
 	if err != nil {
-		log.Println(err)
-		return ""
+		return nil, err
 	}
-	return ip.String()
+	return ip, err
 }
 
 // IsIPv4 returns true if the packet is IPv4s

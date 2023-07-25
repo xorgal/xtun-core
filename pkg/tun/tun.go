@@ -1,7 +1,7 @@
 package tun
 
 import (
-	"log"
+	"fmt"
 	"net"
 	"runtime"
 	"strconv"
@@ -12,7 +12,7 @@ import (
 	"github.com/xorgal/xtun-core/pkg/netutil"
 )
 
-func CreateTunInterface(config config.Config) (iface *water.Interface) {
+func CreateTunInterface(config config.Config) (*water.Interface, error) {
 	c := water.Config{DeviceType: water.TUN}
 	c.PlatformSpecificParams = water.PlatformSpecificParams{}
 	os := runtime.GOOS
@@ -25,16 +25,16 @@ func CreateTunInterface(config config.Config) (iface *water.Interface) {
 	}
 	iface, err := water.New(c)
 	if err != nil {
-		internal.Fatalln("failed to create tun interface:", err)
+		return nil, err
 	}
 	setRoute(config, iface)
-	return iface
+	return iface, err
 }
 
-func setRoute(config config.Config, iface *water.Interface) {
+func setRoute(config config.Config, iface *water.Interface) error {
 	ip, _, err := net.ParseCIDR(config.CIDR)
 	if err != nil {
-		internal.Fatalf("failed to parse IPv4 from CIDR: %v", config.CIDR)
+		return err
 	}
 	os := runtime.GOOS
 	if os == "linux" {
@@ -43,7 +43,10 @@ func setRoute(config config.Config, iface *water.Interface) {
 		internal.Exec("/sbin/ip", "link", "set", "dev", iface.Name(), "up")
 		if !config.ServerMode && config.GlobalMode {
 			physicalIface := netutil.GetInterface()
-			serverAddrIP := netutil.LookupServerAddrIP(config.ServerAddr)
+			serverAddrIP, err := netutil.LookupServerAddrIP(config.ServerAddr)
+			if err != nil {
+				return err
+			}
 			if physicalIface != "" && serverAddrIP != nil {
 				if config.LocalGateway != "" {
 					internal.Exec("/sbin/ip", "route", "add", "0.0.0.0/1", "dev", iface.Name())
@@ -58,7 +61,10 @@ func setRoute(config config.Config, iface *water.Interface) {
 		internal.Exec("ifconfig", iface.Name(), "inet", ip.String(), config.ServerIP, "up")
 		if !config.ServerMode && config.GlobalMode {
 			physicalIface := netutil.GetInterface()
-			serverAddrIP := netutil.LookupServerAddrIP(config.ServerAddr)
+			serverAddrIP, err := netutil.LookupServerAddrIP(config.ServerAddr)
+			if err != nil {
+				return err
+			}
 			if physicalIface != "" && serverAddrIP != nil {
 				if config.LocalGateway != "" {
 					internal.Exec("route", "add", "default", config.ServerIP)
@@ -73,7 +79,10 @@ func setRoute(config config.Config, iface *water.Interface) {
 		}
 	} else if os == "windows" {
 		if !config.ServerMode && config.GlobalMode {
-			serverAddrIP := netutil.LookupServerAddrIP(config.ServerAddr)
+			serverAddrIP, err := netutil.LookupServerAddrIP(config.ServerAddr)
+			if err != nil {
+				return err
+			}
 			if serverAddrIP != nil {
 				if config.LocalGateway != "" {
 					internal.Exec("cmd", "/C", "route", "delete", "0.0.0.0", "mask", "0.0.0.0")
@@ -85,15 +94,15 @@ func setRoute(config config.Config, iface *water.Interface) {
 			}
 		}
 	} else {
-		internal.Fatalf("not support os: %s", os)
+		return fmt.Errorf("not supported os: %s", os)
 	}
-	log.Printf("tun device configured %s", iface.Name())
+	return nil
 }
 
 // Resets the system routes
-func ResetRoute(config config.Config) {
+func ResetRoute(config config.Config) error {
 	if config.ServerMode || !config.GlobalMode {
-		return
+		return nil
 	}
 	os := runtime.GOOS
 	if os == "darwin" {
@@ -101,8 +110,12 @@ func ResetRoute(config config.Config) {
 			internal.Exec("route", "add", "default", config.LocalGateway)
 			internal.Exec("route", "change", "default", config.LocalGateway)
 		}
+		return nil
 	} else if os == "windows" {
-		serverAddrIP := netutil.LookupServerAddrIP(config.ServerAddr)
+		serverAddrIP, err := netutil.LookupServerAddrIP(config.ServerAddr)
+		if err != nil {
+			return err
+		}
 		if serverAddrIP != nil {
 			if config.LocalGateway != "" {
 				internal.Exec("cmd", "/C", "route", "delete", "0.0.0.0", "mask", "0.0.0.0")
@@ -110,4 +123,5 @@ func ResetRoute(config config.Config) {
 			}
 		}
 	}
+	return nil
 }
